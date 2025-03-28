@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>My Firebase DB</title>
+    <style>
+      /* 기존 스타일 유지 */
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        line-height: 1.6;
+      }
+      
+      .data-container {
+        margin-top: 20px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      
+      .control-panel {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f5f5f5;
+        border-radius: 5px;
+      }
+      
+      .status-control {
+        margin-top: 10px;
+      }
+      
+      select, button, input {
+        padding: 5px;
+        margin-right: 10px;
+      }
+      
+      .login-container {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e9f5ff;
+        border-radius: 5px;
+      }
+      
+      .hidden {
+        display: none;
+      }
+      
+      .user-info {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+      
+      /* 시간표 스타일 */
+      .timetable-container {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+        overflow-y: auto;
+        max-height: 600px;
+      }
+      
+      .timetable {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      
+      .timetable th, .timetable td {
+        border: 1px solid #ddd;
+        padding: 6px;
+        text-align: center;
+        font-size: 0.9em;
+      }
+      
+      .timetable th {
+        background-color: #f2f2f2;
+      }
+      
+      .timetable td {
+        cursor: pointer;
+      }
+      
+      .timetable td.selected {
+        background-color: #b3e0ff;
+      }
+      
+      .timetable td.current {
+        background-color: #ffcc80;
+        font-weight: bold;
+      }
+      
+      .timetable-controls {
+        margin-top: 10px;
+      }
+      
+      .current-time-panel {
+        margin-top: 15px;
+        padding: 10px;
+        background-color: #f0f8ff;
+        border-radius: 5px;
+        border-left: 4px solid #4a90e2;
+      }
+      
+      .class-status {
+        font-weight: bold;
+        padding: 5px 10px;
+        border-radius: 3px;
+        display: inline-block;
+        margin-left: 10px;
+      }
+      
+      .in-class {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      
+      .not-in-class {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      
+      .auto-mode-switch {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+      }
+      
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+        margin-right: 10px;
+      }
+      
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: .4s;
+        transition: .4s;
+        border-radius: 24px;
+      }
+      
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        -webkit-transition: .4s;
+        transition: .4s;
+        border-radius: 50%;
+      }
+      
+      input:checked + .slider {
+        background-color: #2196F3;
+      }
+      
+      input:checked + .slider:before {
+        -webkit-transform: translateX(26px);
+        -ms-transform: translateX(26px);
+        transform: translateX(26px);
+      }
+      
+      .next-update {
+        margin-top: 5px;
+        font-size: 0.9em;
+        color: #666;
+      }
+
+      .auth-container {
+        display: flex;
+        gap: 20px;
+      }
+
+      .auth-form {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Firebase 연동 성공</h1>
+    
+    <!-- 인증 컨테이너 -->
+    <div class="auth-container">
+      <!-- 로그인 섹션 -->
+      <div id="login-section" class="login-container auth-form">
+        <h3>로그인</h3>
+        <div>
+          <input type="email" id="email" placeholder="이메일">
+          <input type="password" id="password" placeholder="비밀번호">
+          <button onclick="login()">로그인</button>
+        </div>
+        <p id="login-error" style="color: red;"></p>
+      </div>
+      
+      <!-- 회원가입 섹션 -->
+      <div id="signup-section" class="login-container auth-form">
+        <h3>회원가입</h3>
+        <div>
+          <input type="email" id="signup-email" placeholder="이메일">
+          <input type="password" id="signup-password" placeholder="비밀번호">
+          <button onclick="signup()">회원가입</button>
+        </div>
+        <p id="signup-error" style="color: red;"></p>
+      </div>
+    </div>
+    
+    <!-- 인증된 사용자 섹션 -->
+    <div id="authenticated-section" class="hidden">
+      <div class="user-info">
+        로그인됨: <span id="user-email"></span>
+        <button onclick="logout()">로그아웃</button>
+      </div>
+      
+      <!-- 현재 시간 및 수업 상태 패널 -->
+      <div class="current-time-panel">
+        <h3>현재 시간: <span id="current-time">로딩 중...</span></h3>
+        <p>현재 요일: <span id="current-day">로딩 중...</span></p>
+        <p>
+          수업 상태: 
+          <span id="class-status" class="class-status not-in-class">수업 시간 아님</span>
+        </p>
+        <p class="next-update">다음 업데이트: <span id="next-update-time">로딩 중...</span></p>
+      </div>
+      
+      <button onclick="fetchAllData()">전체 데이터 조회</button>
+      
+      <div class="control-panel">
+        <h3>Event Type 제어</h3>
+        <div class="status-control">
+          <p>현재 Event Type: <span id="current-event-type">로딩 중...</span></p>
+          <select id="event-type-select">
+            <option value="in">in</option>
+            <option value="task">task</option>
+            <option value="out">out</option>
+            <option value="rest">rest</option>
+          </select>
+          <button onclick="updateEventType()">이벤트 타입 업데이트</button>
+          
+          <div class="auto-mode-switch">
+            <label class="switch">
+              <input type="checkbox" id="auto-mode-toggle" checked>
+              <span class="slider"></span>
+            </label>
+            <span>시간표에 따라 30분마다 자동으로 event_type 설정 (수업 중: out, 수업 아님: in)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 시간표 섹션 -->
+      <div class="timetable-container">
+        <h3>시간표 관리</h3>
+        <table class="timetable" id="timetable">
+          <thead>
+            <tr>
+              <th>시간/요일</th>
+              <th>월</th>
+              <th>화</th>
+              <th>수</th>
+              <th>목</th>
+              <th>금</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 시간표 행은 JavaScript로 동적 생성 -->
+          </tbody>
+        </table>
+        <div class="timetable-controls">
+          <button onclick="saveTimeTable()">시간표 저장</button>
+          <button onclick="resetTimeTable()">초기화</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="data-container">
+      <h3>현재 데이터:</h3>
+      <pre id="output"></pre>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+      import { getDatabase, ref, set, onValue, get, child, update } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js";
+      import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCNEPq1RkKbEbSWcmlIJB6ET0QAU9IKEmY",
+        authDomain: "einkdisp.firebaseapp.com",
+        databaseURL: "https://einkdisp-default-rtdb.firebaseio.com",
+        projectId: "einkdisp",
+        storageBucket: "einkdisp.firebasestorage.app",
+        messagingSenderId: "345723956156",
+        appId: "1:345723956156:web:945314a048b833edd3d9b9",
+        measurementId: "G-VW9ESYK969"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+      const auth = getAuth(app);
+      
+      const output = document.getElementById("output");
+      const currentEventTypeElement = document.getElementById("current-event-type");
+      const eventTypeSelect = document.getElementById("event-type-select");
+      const loginSection = document.getElementById("login-section");
+      const signupSection = document.getElementById("signup-section");
+      const authenticatedSection = document.getElementById("authenticated-section");
+      const userEmailElement = document.getElementById("user-email");
+      const loginErrorElement = document.getElementById("login-error");
+      const signupErrorElement = document.getElementById("signup-error");
+      const timetableElement = document.getElementById("timetable");
+      const currentTimeElement = document.getElementById("current-time");
+      const currentDayElement = document.getElementById("current-day");
+      const classStatusElement = document.getElementById("class-status");
+      const autoModeToggle = document.getElementById("auto-mode-toggle");
+      const nextUpdateTimeElement = document.getElementById("next-update-time");
+      
+      // 현재 event_type 상태 추적
+      let currentEventType = "";
+      let lastClassStatus = false; // 마지막으로 확인한 수업 상태
+      let lastUpdateTimeKey = ""; // 마지막 업데이트 시간 키 (HH:MM 형식)
+      
+      // 시간표 관련 변수 - 30분 단위로 변경
+      const timeLabels = [
+        "9:00", "9:30", "10:00", "10:30", "11:00", "11:30", 
+        "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", 
+        "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", 
+        "18:00", "18:30", "19:00"
+      ];
+      const dayLabels = ["mon", "tue", "wed", "thu", "fri"]; // ESP에서 식별하기 쉬운 요일 라벨
+      const koreanDayLabels = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"];
+      let timetableData = Array(21).fill().map(() => Array(5).fill(false)); // 21행 (30분 간격)
+      
+      // 현재 시간 확인 및 표시하는 함수
+      function updateCurrentTime() {
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        
+        // 현재 시간 표시
+        currentTimeElement.textContent = `${hours}:${minutes}:${seconds}`;
+        
+        // 현재 요일 (0: 일요일, 1: 월요일, ...)
+        const dayOfWeek = now.getDay();
+        const koreanDay = koreanDayLabels[dayOfWeek - 1] || koreanDayLabels[dayOfWeek + 6]; // 요일 변환 (월-금)
+        currentDayElement.textContent = koreanDay;
+        
+        // 현재 수업 중인지 확인
+        checkCurrentClassStatus(now, dayOfWeek);
+        
+        // 시간표에서 현재 시간 표시
+        highlightCurrentTimeInTable(now, dayOfWeek);
+        
+        // 30분 단위로 자동 업데이트 확인
+        checkScheduledUpdate(now, dayOfWeek);
+      }
+      
+      // 30분 간격으로 자동 업데이트 확인
+      function checkScheduledUpdate(now, dayOfWeek) {
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        
+        // 현재 시간을 30분 단위로 표현한 키 (예: "09:00", "09:30")
+        const currentTimeKey = `${hours.toString().padStart(2, '0')}:${minutes >= 30 ? '30' : '00'}`;
+        
+        // 다음 업데이트 시간 계산 (현재가 x:00이면 x:30, x:30이면 (x+1):00)
+        let nextHour = hours;
+        let nextMinute = minutes >= 30 ? 0 : 30;
+        
+        if (minutes >= 30) {
+          nextHour = (hours + 1) % 24;
+        }
+        
+        const nextUpdateTime = `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
+        nextUpdateTimeElement.textContent = nextUpdateTime;
+        
+        // 새로운 30분 주기에 진입했고, 자동 모드가 켜져 있고, 로그인된 상태라면 업데이트
+        if (currentTimeKey !== lastUpdateTimeKey && autoModeToggle.checked && auth.currentUser) {
+          lastUpdateTimeKey = currentTimeKey;
+          
+          // 현재 수업 상태 확인
+          const isClassTime = checkIfClassTime(now, dayOfWeek);
+          
+          // 수업 상태에 따라 event_type 업데이트
+          if (isClassTime && currentEventType !== "out") {
+            updateEventTypeAuto("out");
+          } else if (!isClassTime && currentEventType !== "in") {
+            updateEventTypeAuto("in");
+          }
+          
+          console.log(`30분 주기 업데이트 실행: ${currentTimeKey}, 수업 상태: ${isClassTime ? '수업중' : '수업아님'}`);
+        }
+      }
+      
+      // 현재 시간이 수업 시간인지 확인하는 함수 (상태 변경 없이 단순히 결과만 반환)
+      function checkIfClassTime(now, dayOfWeek) {
+        // 주말이면 수업 없음
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          return false;
+        }
+        
+        // 현재 시간이 9:00-19:00 이외면 수업 없음
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        if (hours < 9 || (hours === 19 && minutes > 0) || hours > 19) {
+          return false;
+        }
+        
+        // 시간표 데이터에서 현재 시간에 해당하는 인덱스 계산
+        const timeIndex = (hours - 9) * 2 + (minutes >= 30 ? 1 : 0);
+        const dayIndex = dayOfWeek - 1; // 월요일(1)은 인덱스 0
+        
+        // 시간표 데이터 확인
+        if (dayIndex >= 0 && dayIndex < 5 && timeIndex >= 0 && timeIndex < 21) {
+          return timetableData[timeIndex][dayIndex];
+        }
+        
+        return false;
+      }
+      
+      // 현재 시간이 수업 시간인지 확인하는 함수 (UI 업데이트 및 상태 변화 감지)
+      function checkCurrentClassStatus(now, dayOfWeek) {
+        const isClassTime = checkIfClassTime(now, dayOfWeek);
+        
+        // 수업 상태 UI 업데이트
+        updateClassStatus(isClassTime);
+        
+        // 상태가 변경되었고 자동 모드가 켜져 있으면 event_type 업데이트
+        if (isClassTime !== lastClassStatus && autoModeToggle.checked && auth.currentUser) {
+          if (isClassTime && currentEventType !== "out") {
+            // 수업 시간이면 'out'으로 변경
+            updateEventTypeAuto("out");
+          } else if (!isClassTime && currentEventType !== "in") {
+            // 수업 시간이 아니면 'in'으로 변경
+            updateEventTypeAuto("in");
+          }
+        }
+        
+        // 마지막 상태 저장
+        lastClassStatus = isClassTime;
+      }
+      
+      // 수업 상태 업데이트 함수
+      function updateClassStatus(isClassTime) {
+        if (isClassTime) {
+          classStatusElement.textContent = "수업 시간";
+          classStatusElement.classList.remove("not-in-class");
+          classStatusElement.classList.add("in-class");
+        } else {
+          classStatusElement.textContent = "수업 시간 아님";
+          classStatusElement.classList.remove("in-class");
+          classStatusElement.classList.add("not-in-class");
+        }
+      }
+      
+      // 자동으로 event_type 업데이트 함수
+      function updateEventTypeAuto(newType) {
+        const personXRef = ref(db, 'personX/');
+        
+        update(personXRef, {
+          event_type: newType
+        })
+        .then(() => {
+          console.log(`자동 모드: event_type이 ${newType}으로 업데이트되었습니다.`);
+        })
+        .catch((error) => {
+          console.error("자동 업데이트 오류:", error);
+        });
+      }
+      
+      // 시간표에서 현재 시간 하이라이트
+      function highlightCurrentTimeInTable(now, dayOfWeek) {
+        // 이전 하이라이트 제거
+        const prevHighlights = timetableElement.querySelectorAll("td.current");
+        prevHighlights.forEach(cell => cell.classList.remove("current"));
+        
+        // 주말 또는 9:00-19:00 이외 시간이면 하이라이트 없음
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          return;
+        }
+        
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        if (hours < 9 || (hours === 19 && minutes > 0) || hours > 19) {
+          return;
+        }
+        
+        // 현재 시간에 해당하는 셀 하이라이트
+        const timeIndex = (hours - 9) * 2 + (minutes >= 30 ? 1 : 0);
+        const dayIndex = dayOfWeek - 1; // 월요일(1)은 인덱스 0
+        
+        if (dayIndex >= 0 && dayIndex < 5 && timeIndex >= 0 && timeIndex < 21) {
+          const cell = timetableElement.querySelector(`td[data-row="${timeIndex}"][data-col="${dayIndex}"]`);
+          if (cell) {
+            cell.classList.add("current");
+          }
+        }
+      }
+
+      // 시간표 초기화 함수
+      function initializeTimeTable() {
+        const tbody = timetableElement.querySelector("tbody");
+        tbody.innerHTML = "";
+
+        for (let i = 0; i < 21; i++) {  // 21행 (30분 간격)
+          const row = document.createElement("tr");
+          
+          // 시간 열 추가
+          const timeCell = document.createElement("td");
+          timeCell.textContent = timeLabels[i];
+          timeCell.style.fontWeight = "bold";
+          timeCell.style.backgroundColor = "#f2f2f2";
+          row.appendChild(timeCell);
+          
+          // 각 요일 셀 추가
+          for (let j = 0; j < 5; j++) {
+            const cell = document.createElement("td");
+            cell.dataset.row = i;
+            cell.dataset.col = j;
+            cell.addEventListener("click", toggleCell);
+            if (timetableData[i][j]) {
+              cell.classList.add("selected");
+            }
+            row.appendChild(cell);
+          }
+          
+          tbody.appendChild(row);
+        }
+        
+        // 현재 시간 표시 업데이트
+        updateCurrentTime();
+      }
+
+      // 셀 선택/해제 토글 함수
+      function toggleCell(event) {
+        const cell = event.target;
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+        
+        timetableData[row][col] = !timetableData[row][col];
+        
+        if (timetableData[row][col]) {
+          cell.classList.add("selected");
+        } else {
+          cell.classList.remove("selected");
+        }
+        
+        // 현재 셀이 현재 시간대인 경우 수업 상태 즉시 업데이트
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        if (dayOfWeek - 1 === col) {  // 현재 요일 열
+          const hours = now.getHours();
+          const minutes = now.getMinutes();
+          const timeIndex = (hours - 9) * 2 + (minutes >= 30 ? 1 : 0);
+          
+          if (timeIndex === row) {
+            checkCurrentClassStatus(now, dayOfWeek);
+          }
+        }
+      }
+
+      // 시간표 저장 함수 - ESP 친화적인 형태로 수정
+      window.saveTimeTable = () => {
+        // 로그인 상태 확인
+        const user = auth.currentUser;
+        if (!user) {
+          alert("시간표를 저장하려면 로그인이 필요합니다.");
+          return;
+        }
+
+        // ESP가 읽기 쉬운 형태로 데이터 구조화
+        const espFriendlyData = {
+          updatedAt: new Date().toISOString(),
+          updatedBy: user.email
+        };
+
+        // 각 요일별 배열로 변환 (ESP가 읽기 쉽도록)
+        for (let day = 0; day < 5; day++) {
+          const daySchedule = [];
+          for (let hour = 0; hour < 21; hour++) {  // 21행 (30분 간격)
+            // 1 또는 0으로 상태 저장 (ESP에서 사용하기 편함)
+            daySchedule.push(timetableData[hour][day] ? 1 : 0);
+          }
+          espFriendlyData[dayLabels[day]] = daySchedule;
+        }
+
+        // 원본 2차원 배열도 저장 (웹 인터페이스용)
+        espFriendlyData.rawData = timetableData;
+        
+        const timetableRef = ref(db, 'timetable');
+        
+        set(timetableRef, espFriendlyData)
+        .then(() => {
+          alert("시간표가 성공적으로 저장되었습니다.");
+          
+          // 시간표가 업데이트되었으므로 현재 상태 다시 확인
+          const now = new Date();
+          checkCurrentClassStatus(now, now.getDay());
+        })
+        .catch((error) => {
+          alert("시간표 저장 중 오류 발생: " + error.message);
+        });
+      };
+
+      // 시간표 초기화 함수
+      window.resetTimeTable = () => {
+        timetableData = Array(21).fill().map(() => Array(5).fill(false));  // 21행 (30분 간격)
+        initializeTimeTable();
+      };
+
+      // 시간표 데이터 불러오기 - ESP 친화적인 형태로 수정
+      function loadTimeTable() {
+        const timetableRef = ref(db, 'timetable');
+        get(timetableRef).then((snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            if (data.rawData) {
+              // 원본 데이터가 있으면 그것을 사용
+              timetableData = data.rawData;
+              
+              // 새 포맷(21행)으로 변환이 필요한 경우(이전 데이터가 11행이었을 경우)
+              if (timetableData.length < 21) {
+                const newTimetableData = Array(21).fill().map(() => Array(5).fill(false));
+                // 기존 데이터 복사
+                for (let i = 0; i < timetableData.length; i++) {
+                  for (let j = 0; j < 5; j++) {
+                    // 1시간 단위 데이터를 30분 단위로 변환 (같은 시간대 두 칸에 동일하게 적용)
+                    const newIndex = i * 2; // 9:00 -> 인덱스 0, 10:00 -> 인덱스 2
+                    if (newIndex < 21) {
+                      newTimetableData[newIndex][j] = timetableData[i][j];
+                      if (newIndex + 1 < 21) { // 30분 단위 칸도 동일하게 설정
+                        newTimetableData[newIndex + 1][j] = timetableData[i][j];
+                      }
+                    }
+                  }
+                }
+                timetableData = newTimetableData;
+              }
+            } else if (data.mon) {
+              // ESP 친화적 형식으로만 저장된 경우 변환
+              timetableData = Array(21).fill().map(() => Array(5).fill(false));
+              for (let day = 0; day < 5; day++) {
+                const dayData = data[dayLabels[day]] || [];
+                for (let hour = 0; hour < 21; hour++) {
+                  if (hour < dayData.length) {
+                    timetableData[hour][day] = dayData[hour] === 1;
+                  }
+                }
+              }
+            }
+            initializeTimeTable();
+            updateCurrentTime(); // 현재 시간 확인
+            
+            // 페이지 로드 시 현재 타임슬롯 키 설정 (다음 30분 주기에 업데이트되도록)
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            lastUpdateTimeKey = `${hours.toString().padStart(2, '0')}:${minutes >= 30 ? '30' : '00'}`;
+          }
+        }).catch(error => {
+          console.error("시간표 로드 중 오류 발생:", error);
+        });
+      }
+
+      // Function to fetch all data from the database
+      window.fetchAllData = () => {
+        const dbRef = ref(db);
+        get(dbRef).then((snapshot) => {
+          if (snapshot.exists()) {
+            output.textContent = JSON.stringify(snapshot.val(), null, 2);
+          } else {
+            output.textContent = "데이터가 없습니다.";
+          }
+        }).catch((error) => {
+          output.textContent = "데이터 조회 오류: " + error.message;
+        });
+      };
+
+      // personX의 event_type 변경 함수
+      window.updateEventType = () => {
+        // 로그인 상태 확인
+        const user = auth.currentUser;
+        if (!user) {
+          alert("이벤트 타입을 변경하려면 로그인이 필요합니다.");
+          return;
+        }
+
+        const newEventType = eventTypeSelect.value;
+        const personXRef = ref(db, 'personX/');
+        
+        update(personXRef, {
+          event_type: newEventType
+        })
+        .then(() => {
+          alert("이벤트 타입이 성공적으로 업데이트되었습니다.");
+        })
+        .catch((error) => {
+          alert("이벤트 타입 업데이트 중 오류 발생: " + error.message);
+        });
+      };
+
+      // Monitor personX event_type changes in real-time
+      const personXRef = ref(db, 'personX/');
+      onValue(personXRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.event_type) {
+          currentEventType = data.event_type; // 현재 event_type 저장
+          currentEventTypeElement.textContent = data.event_type;
+          eventTypeSelect.value = data.event_type;
+        }
+      });
+
+      // 로그인 함수
+      window.login = () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        
+        if (!email || !password) {
+          loginErrorElement.textContent = "이메일과 비밀번호를 모두 입력해주세요.";
+          return;
+        }
+        
+        signInWithEmailAndPassword(auth, email, password)
+          .then((userCredential) => {
+            // 로그인 성공
+            loginErrorElement.textContent = "";
+            document.getElementById("email").value = "";
+            document.getElementById("password").value = "";
+          })
+          .catch((error) => {
+            // 로그인 실패
+            loginErrorElement.textContent = "로그인 실패: " + error.message;
+          });
+      };
+
+      // 회원가입 함수
+      window.signup = () => {
+        const email = document.getElementById("signup-email").value;
+        const password = document.getElementById("signup-password").value;
+        
+        if (!email || !password) {
+          signupErrorElement.textContent = "이메일과 비밀번호를 모두 입력해주세요.";
+          return;
+        }
+        
+        // Firebase에 새 사용자 생성
+        createUserWithEmailAndPassword(auth, email, password)
+          .then((userCredential) => {
+            // 회원가입 성공
+            alert("회원가입이 완료되었습니다!");
+            document.getElementById("signup-email").value = "";
+            document.getElementById("signup-password").value = "";
+            signupErrorElement.textContent = "";
+          })
+          .catch((error) => {
+            // 회원가입 실패
+            signupErrorElement.textContent = "회원가입 실패: " + error.message;
+          });
+      };
+
+      // 로그아웃 함수
+      window.logout = () => {
+        signOut(auth).then(() => {
+          // 로그아웃 성공
+        }).catch((error) => {
+          alert("로그아웃 실패: " + error.message);
+        });
+      };
+
+      // 인증 상태 변경 감지
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // 로그인 상태
+          loginSection.classList.add("hidden");
+          signupSection.classList.add("hidden");
+          authenticatedSection.classList.remove("hidden");
+          userEmailElement.textContent = user.email;
+          fetchAllData(); // 데이터 로드
+          loadTimeTable(); // 시간표 로드
+          
+          // 현재 시간 및 수업 상태 업데이트 타이머 시작
+          setInterval(updateCurrentTime, 1000); // 1초마다 업데이트
+        } else {
+          // 로그아웃 상태
+          loginSection.classList.remove("hidden");
+          signupSection.classList.remove("hidden");
+          authenticatedSection.classList.add("hidden");
+          userEmailElement.textContent = "";
+        }
+      });
+
+      // 페이지 로드 시 시간표 초기화 (비어있는 상태)
+      initializeTimeTable();
+    </script>
+  </body>
+</html>
